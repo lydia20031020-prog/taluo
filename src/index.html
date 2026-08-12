@@ -10,6 +10,18 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" >
   <title>塔罗之光</title>
   <script><%= htmlWebpackPlugin.options.script %></script>
+  <script>
+    (() => {
+      const updateRootFontSize = () => {
+        const width = Math.min(window.innerWidth || 375, 480)
+        const size = Math.max(12, Math.min(40, (12 * width) / 375))
+        document.documentElement.style.fontSize = `${size}px`
+      }
+
+      updateRootFontSize()
+      window.addEventListener('resize', updateRootFontSize)
+    })()
+  </script>
 </head>
 <body>
   <div id="app"></div>

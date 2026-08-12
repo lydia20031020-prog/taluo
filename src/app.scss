@@ -43,6 +43,25 @@
   }
 }
 
+/* The app is mobile-first. Keep desktop previews at a readable phone-like width
+   instead of stretching every rem value across a wide monitor. */
+html,
+body {
+  min-height: 100%;
+  background: hsl(var(--background));
+}
+
+body {
+  margin: 0 auto;
+  max-width: 480px;
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
 @layer utilities {
   /* 渐变文字 - miniprogram 不支持 bg-clip:text，改为纯色 */
   .gradient-text {
