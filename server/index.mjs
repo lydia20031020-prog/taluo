@@ -1,7 +1,7 @@
 import {readFileSync, renameSync, writeFileSync} from 'node:fs'
 import http from 'node:http'
 
-const port = Number(process.env.PORT || 8787)
+const port = Number(process.env.PORT || 8790)
 const apiKey = process.env.DEEPSEEK_API_KEY || ''
 const model = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash'
 const deepSeekBaseUrl = (process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com').replace(/\/$/, '')

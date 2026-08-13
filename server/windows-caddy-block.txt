@@ -1,0 +1,21 @@
+# Append this block to C:\caddy\Caddyfile. Do not replace the existing wbti blocks.
+
+api.taluo.lydiaowo.com {
+    encode zstd gzip
+
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    route {
+        @api_methods method POST OPTIONS
+        handle @api_methods {
+            reverse_proxy 127.0.0.1:8790
+        }
+        handle {
+            respond 404
+        }
+    }
+}
