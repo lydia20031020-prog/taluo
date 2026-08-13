@@ -59,25 +59,24 @@ pnpm run lint  # Lint source (Important: After modifying the code, please execut
 
 ## H5 网站发布
 
-当前前端地址：`https://lydia20031020-prog.github.io/taluo/`。H5 由 GitHub Pages 托管，AI 请求经
+正式前端地址：`https://www.taluo.lydiaowo.com`。网站和 AI 均运行在腾讯云服务器
+`43.143.208.73`，GitHub 仓库只用于代码版本管理和后续迭代。AI 请求经
 `https://api.taluo.lydiaowo.com` 转发到 DeepSeek，API 密钥只保存在腾讯云服务器中。Supabase 尚未配置，
 当前牌库和牌阵使用本地离线数据。
 
-### GitHub Pages 自动部署
+### GitHub 代码备份
 
-仓库已经包含 `.github/workflows/deploy-pages.yml`。将代码推送到 `main` 分支后，GitHub Actions 会自动构建并发布 H5。
+仓库仍保留 `.github/workflows/deploy-pages.yml` 作为备用构建流程；正式网站不依赖 GitHub Pages。
 
-1. 在仓库 `Settings > Pages > Build and deployment` 中将 `Source` 设为 `GitHub Actions`。
-2. AI API 地址已经在工作流中配置为 `https://api.taluo.lydiaowo.com`。不要在 GitHub Secrets、Variables 或前端环境变量中添加 DeepSeek API Key。
-3. Supabase 尚未创建时无需添加相关变量，页面会使用本地塔罗数据。
-4. 推送到 `main` 后，在 `Actions` 页面等待 `Build and deploy H5 to GitHub Pages` 完成。
+1. 推送到 `main` 保存代码版本。
+2. 不要在 GitHub Secrets、Variables 或前端环境变量中添加 DeepSeek API Key。
 
 ### 1. DeepSeek AI 架构
 
 ```text
-GitHub Pages H5
+www.taluo.lydiaowo.com
+    -> Tencent Cloud 43.143.208.73 (Caddy + static H5)
     -> https://api.taluo.lydiaowo.com
-    -> Tencent Cloud 43.143.208.73 (Nginx + Node.js)
     -> https://api.deepseek.com/chat/completions
 ```
 
@@ -94,40 +93,40 @@ corepack pnpm build:h5:production
 
 ### 3. 配置 DNS
 
-域名当前使用 DNSPod。添加一条记录：
+域名当前使用 DNSPod。正式网站和 AI 接口分别添加以下记录：
 
 | 配置项 | 值 |
 | --- | --- |
-| 记录类型 | `A` |
-| 主机记录 | `api.taluo` |
-| 记录值 | `43.143.208.73` |
+| 网站记录类型 | `A` |
+| 网站主机记录 | `www.taluo` |
+| 网站记录值 | `43.143.208.73` |
+| AI 记录类型 | `A` |
+| AI 主机记录 | `api.taluo` |
+| AI 记录值 | `43.143.208.73` |
 | TTL | 默认 |
 
-### 4. 部署 AI 服务
+### 4. 部署网站和 AI 服务
 
-服务器要求 Ubuntu/Debian、Node.js 20 或更高版本、Nginx。不要把 API Key 写入仓库或命令历史。
+当前腾讯云服务器是 Windows Server 2022，已有 Caddy 和 `wbti.lydiaowo.com` 网站。不要安装或配置 Nginx，也不要覆盖现有 Caddyfile。塔罗网站使用 `C:\sites\taluo`，AI 使用独立端口 `8790`。
 
 ```bash
-sudo useradd --system --home /opt/taluo-ai --shell /usr/sbin/nologin taluo
-sudo mkdir -p /opt/taluo-ai
-sudo cp server/index.mjs server/package.json /opt/taluo-ai/
-sudo chown -R taluo:taluo /opt/taluo-ai
-sudo cp server/taluo-ai.service /etc/systemd/system/
-sudo cp server/nginx-api.conf /etc/nginx/sites-available/taluo-api
-sudo ln -s /etc/nginx/sites-available/taluo-api /etc/nginx/sites-enabled/taluo-api
+Set-ExecutionPolicy Bypass -Scope Process -Force
+Invoke-WebRequest -UseBasicParsing `
+  https://raw.githubusercontent.com/lydia20031020-prog/taluo/main/server/windows-deploy.ps1 `
+  -OutFile C:\Windows\Temp\taluo-deploy.ps1
+& C:\Windows\Temp\taluo-deploy.ps1
 ```
 
 在服务器交互式创建密钥文件，避免密钥进入 shell 历史：
 
 ```bash
-sudo install -m 600 -o root -g root /dev/null /etc/taluo-ai.env
-sudo nano /etc/taluo-ai.env
+notepad C:\taluo-ai\.env
 ```
 
 文件内容：
 
 ```ini
-PORT=8787
+PORT=8790
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_MODEL=deepseek-v4-flash
 DEEPSEEK_API_KEY=在这里填写新密钥
@@ -139,28 +138,25 @@ DAILY_IP_LIMIT=20
 启动服务：
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now taluo-ai
-sudo systemctl status taluo-ai --no-pager
-sudo nginx -t
-sudo systemctl reload nginx
+Get-ScheduledTask TaluoAI
+Start-ScheduledTask TaluoAI
+Get-Content C:\ProgramData\taluo-ai\service.log -Tail 50
+& C:\caddy\caddy.exe validate --config C:\caddy\Caddyfile --adapter caddyfile
 ```
 
 ### 5. 配置 HTTPS
 
 确认 `api.taluo.lydiaowo.com` 已解析到服务器后执行：
 
-```bash
-sudo apt update
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d api.taluo.lydiaowo.com
-```
+不需要单独安装 Certbot。Caddy 会在 `api.taluo.lydiaowo.com` 的 DNS 生效后自动申请和续期 HTTPS 证书。
 
 验收：
 
 ```bash
-curl -i https://api.taluo.lydiaowo.com/api/tarot/summary
-journalctl -u taluo-ai -n 50 --no-pager
+Invoke-WebRequest -UseBasicParsing https://api.taluo.lydiaowo.com/
+Get-ScheduledTask TaluoAI
+Get-Service Caddy
+Get-Content C:\ProgramData\taluo-ai\service.log -Tail 50
 ```
 
 第一个命令用 GET 请求会返回 `404`，这表示 HTTPS 和反向代理已连通。之后在 H5 中进行一次单张牌占卜，分别测试 AI 深度解读和 AI 总结。
