@@ -7,12 +7,14 @@ $DataDir = 'C:\ProgramData\taluo-ai'
 $SiteDir = 'C:\sites\taluo'
 $TaskName = 'TaluoAI'
 $SourceRef = 'main'
-$NodeVersion = 'v24.19.0'
-$NodeMsi = "$env:TEMP\node-$NodeVersion-x64.msi"
-$NodeUrl = "https://nodejs.org/dist/$NodeVersion/node-$NodeVersion-x64.msi"
-$NodeExe = 'C:\Program Files\nodejs\node.exe'
-$NpmExe = 'C:\Program Files\nodejs\npm.cmd'
 $PnpmRoot = 'C:\taluo-tools'
+$NodeVersion = 'v22.23.2'
+$NodeArchiveName = "node-$NodeVersion-win-x64"
+$NodeZip = "$env:TEMP\$NodeArchiveName.zip"
+$NodeUrl = "https://nodejs.org/dist/$NodeVersion/$NodeArchiveName.zip"
+$NodeRoot = "$PnpmRoot\$NodeArchiveName"
+$NodeExe = "$NodeRoot\node.exe"
+$NpmExe = "$NodeRoot\npm.cmd"
 $PnpmExe = "$PnpmRoot\pnpm.cmd"
 $Entry = "$InstallDir\index.mjs"
 $EnvFile = "$InstallDir\.env"
@@ -28,15 +30,15 @@ function Download-File([string]$Url, [string]$Path) {
 New-Item -ItemType Directory -Force -Path $InstallDir, $DataDir, $SiteDir | Out-Null
 
 if (-not (Test-Path $NodeExe)) {
-  Download-File $NodeUrl $NodeMsi
-  Start-Process msiexec.exe -ArgumentList "/i `"$NodeMsi`" /qn /norestart" -Wait
+  Download-File $NodeUrl $NodeZip
+  Expand-Archive -Path $NodeZip -DestinationPath $PnpmRoot -Force
 }
 if (-not (Test-Path $NodeExe)) {
   throw "Node.js installation failed: $NodeExe was not found."
 }
 
-# MSI environment changes are not visible to the current PowerShell process.
-$env:Path = "$(Split-Path $NodeExe);$PnpmRoot;$env:Path"
+# Keep this deployment on Node 22 without changing other server applications.
+$env:Path = "$NodeRoot;$PnpmRoot;$env:Path"
 & $NodeExe --version
 if ($LASTEXITCODE -ne 0) { throw 'Node.js validation failed.' }
 
@@ -74,6 +76,14 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'GitHub Pages file preparation failed.' }
   if (-not (Test-Path (Join-Path $SourceDir.FullName 'dist\index.html'))) {
     throw 'The build completed but dist\index.html was not found.'
+  }
+  $AppBundle = Get-ChildItem -Path (Join-Path $SourceDir.FullName 'dist\js\app.*.js') -File -ErrorAction SilentlyContinue
+  $CssBundles = Get-ChildItem -Path (Join-Path $SourceDir.FullName 'dist\css\*.css') -File -ErrorAction SilentlyContinue
+  $LargestScript = Get-ChildItem -Path (Join-Path $SourceDir.FullName 'dist\js\*.js') -File -ErrorAction SilentlyContinue |
+    Sort-Object Length -Descending |
+    Select-Object -First 1
+  if (-not $AppBundle -or -not $CssBundles -or -not $LargestScript -or $LargestScript.Length -lt 100000) {
+    throw 'The H5 build is incomplete. Existing website files were preserved.'
   }
   $DistDir = Join-Path $SourceDir.FullName 'dist'
 }
