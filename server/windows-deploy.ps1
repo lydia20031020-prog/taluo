@@ -14,8 +14,7 @@ $NodeZip = "$env:TEMP\$NodeArchiveName.zip"
 $NodeUrl = "https://nodejs.org/dist/$NodeVersion/$NodeArchiveName.zip"
 $NodeRoot = "$PnpmRoot\$NodeArchiveName"
 $NodeExe = "$NodeRoot\node.exe"
-$NpmExe = "$NodeRoot\npm.cmd"
-$PnpmExe = "$PnpmRoot\pnpm.cmd"
+$SiteArchiveSha256 = '6A2BDB851F1F1950CDC5C21AFE6418015EF9B6E8703E9A18369D187C7932E2FB'
 $Entry = "$InstallDir\index.mjs"
 $EnvFile = "$InstallDir\.env"
 $Runner = "$InstallDir\run.ps1"
@@ -42,15 +41,6 @@ $env:Path = "$NodeRoot;$PnpmRoot;$env:Path"
 & $NodeExe --version
 if ($LASTEXITCODE -ne 0) { throw 'Node.js validation failed.' }
 
-if (-not (Test-Path $PnpmExe)) {
-  & $NpmExe install --global pnpm@10.27.0 --prefix $PnpmRoot
-  if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PnpmExe)) {
-    throw "pnpm installation failed: $PnpmExe was not found."
-  }
-}
-& $PnpmExe --version
-if ($LASTEXITCODE -ne 0) { throw 'pnpm validation failed.' }
-
 $BuildId = [guid]::NewGuid().ToString('N')
 $BuildRoot = Join-Path $env:TEMP "taluo-source-$BuildId"
 $SourceZip = Join-Path $env:TEMP "taluo-source-$BuildId.zip"
@@ -60,35 +50,22 @@ Expand-Archive -Path $SourceZip -DestinationPath $BuildRoot -Force
 $SourceDir = Get-ChildItem -Path $BuildRoot -Directory | Select-Object -First 1
 if (-not $SourceDir) { throw 'Tarot source directory was not found.' }
 
-Push-Location $SourceDir.FullName
-try {
-  & $PnpmExe install --no-frozen-lockfile
-  if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
-  $env:TARO_APP_PUBLIC_PATH = '/'
-  $env:TARO_APP_CUSTOM_DOMAIN = 'www.taluo.lydiaowo.com'
-  $env:TARO_APP_AI_API_URL = 'https://api.taluo.lydiaowo.com'
-  $env:TARO_APP_SUPABASE_URL = ''
-  $env:TARO_APP_SUPABASE_ANON_KEY = ''
-  $env:TARO_APP_APP_ID = 'taluo-h5'
-  & $PnpmExe build:h5:production
-  if ($LASTEXITCODE -ne 0) { throw 'H5 production build failed.' }
-  & $NodeExe scripts/preparePages.mjs
-  if ($LASTEXITCODE -ne 0) { throw 'GitHub Pages file preparation failed.' }
-  if (-not (Test-Path (Join-Path $SourceDir.FullName 'dist\index.html'))) {
-    throw 'The build completed but dist\index.html was not found.'
-  }
-  $AppBundle = Get-ChildItem -Path (Join-Path $SourceDir.FullName 'dist\js\app.*.js') -File -ErrorAction SilentlyContinue
-  $CssBundles = Get-ChildItem -Path (Join-Path $SourceDir.FullName 'dist\css\*.css') -File -ErrorAction SilentlyContinue
-  $LargestScript = Get-ChildItem -Path (Join-Path $SourceDir.FullName 'dist\js\*.js') -File -ErrorAction SilentlyContinue |
-    Sort-Object Length -Descending |
-    Select-Object -First 1
-  if (-not $AppBundle -or -not $CssBundles -or -not $LargestScript -or $LargestScript.Length -lt 100000) {
-    throw 'The H5 build is incomplete. Existing website files were preserved.'
-  }
-  $DistDir = Join-Path $SourceDir.FullName 'dist'
+$SiteArchive = Join-Path $SourceDir.FullName 'server\taluo-site.zip'
+if (-not (Test-Path $SiteArchive)) { throw 'The prebuilt H5 archive was not found.' }
+$ActualSiteArchiveSha256 = (Get-FileHash $SiteArchive -Algorithm SHA256).Hash
+if ($ActualSiteArchiveSha256 -ne $SiteArchiveSha256) {
+  throw 'The prebuilt H5 archive checksum is invalid.'
 }
-finally {
-  Pop-Location
+$DistDir = Join-Path $BuildRoot 'site'
+Expand-Archive -Path $SiteArchive -DestinationPath $DistDir -Force
+$IndexFile = Join-Path $DistDir 'index.html'
+$AppBundle = Get-ChildItem -Path (Join-Path $DistDir 'js\app.*.js') -File -ErrorAction SilentlyContinue
+$CssBundles = Get-ChildItem -Path (Join-Path $DistDir 'css\*.css') -File -ErrorAction SilentlyContinue
+$LargestScript = Get-ChildItem -Path (Join-Path $DistDir 'js\*.js') -File -ErrorAction SilentlyContinue |
+  Sort-Object Length -Descending |
+  Select-Object -First 1
+if (-not (Test-Path $IndexFile) -or -not $AppBundle -or -not $CssBundles -or -not $LargestScript -or $LargestScript.Length -lt 100000) {
+  throw 'The prebuilt H5 archive is incomplete. Existing website files were preserved.'
 }
 
 & robocopy $DistDir $SiteDir /MIR /R:2 /W:2 /NFL /NDL /NJH /NJS

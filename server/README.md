@@ -29,4 +29,6 @@ DAILY_REQUEST_LIMIT=200
 DAILY_IP_LIMIT=20
 ```
 
-Run `windows-deploy.ps1` in an elevated PowerShell. It installs Node.js 24 and pnpm, downloads the repository, builds the H5 into `C:\sites\taluo`, creates an isolated `TaluoAI` scheduled task on `127.0.0.1:8790`, backs up and appends the website/API Caddy blocks, validates them, and reloads Caddy. It never replaces the existing `wbti` blocks.
+Run `windows-deploy.ps1` in an elevated PowerShell. It installs an isolated Node.js 22 runtime, verifies and extracts the prebuilt H5 into `C:\sites\taluo`, creates an isolated `TaluoAI` scheduled task on `127.0.0.1:8790`, backs up and appends the website/API Caddy blocks, validates them, and reloads Caddy. It never replaces the existing `wbti` blocks.
+
+The H5 is built on the verified GitHub/Linux toolchain because the Taro 4.1.5 Windows build can silently emit an incomplete four-module shell. `taluo-site.zip` is checksum-verified before the existing website is replaced.
