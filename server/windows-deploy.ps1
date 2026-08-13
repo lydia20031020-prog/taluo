@@ -109,8 +109,21 @@ if ($existingTask) {
   Stop-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 2
 }
+$portConnections = @(Get-NetTCPConnection -State Listen -LocalPort 8790 -ErrorAction SilentlyContinue)
+foreach ($connection in $portConnections) {
+  $process = Get-CimInstance Win32_Process -Filter "ProcessId=$($connection.OwningProcess)"
+  if ($process.Name -eq 'node.exe' -and ([string]$process.CommandLine).Contains($Entry)) {
+    Stop-Process -Id $connection.OwningProcess -Force
+  }
+  else {
+    throw "Port 8790 is used by another process: PID $($connection.OwningProcess)."
+  }
+}
+if ($portConnections.Count -gt 0) {
+  Start-Sleep -Seconds 2
+}
 if (Get-NetTCPConnection -State Listen -LocalPort 8790 -ErrorAction SilentlyContinue) {
-  throw 'Port 8790 is already in use. Deployment stopped before modifying Caddy.'
+  throw 'The previous TaluoAI process did not release port 8790.'
 }
 
 @"
