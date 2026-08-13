@@ -35,12 +35,19 @@ if (-not (Test-Path $NodeExe)) {
   throw "Node.js installation failed: $NodeExe was not found."
 }
 
+# MSI environment changes are not visible to the current PowerShell process.
+$env:Path = "$(Split-Path $NodeExe);$PnpmRoot;$env:Path"
+& $NodeExe --version
+if ($LASTEXITCODE -ne 0) { throw 'Node.js validation failed.' }
+
 if (-not (Test-Path $PnpmExe)) {
   & $NpmExe install --global pnpm@10.27.0 --prefix $PnpmRoot
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PnpmExe)) {
     throw "pnpm installation failed: $PnpmExe was not found."
   }
 }
+& $PnpmExe --version
+if ($LASTEXITCODE -ne 0) { throw 'pnpm validation failed.' }
 
 $BuildId = [guid]::NewGuid().ToString('N')
 $BuildRoot = Join-Path $env:TEMP "taluo-source-$BuildId"
