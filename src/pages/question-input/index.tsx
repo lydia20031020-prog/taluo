@@ -51,14 +51,13 @@ export default function QuestionInput() {
       {/* 问题输入 */}
       <View className="mb-6">
         <Text className="text-base text-foreground mb-3 break-keep">你的问题(可选)</Text>
-        <View className="rounded-xl border border-border/60 px-4 py-3" style={{background: 'transparent'}}>
+        <View className="question-input-panel rounded-xl border border-border/60 px-4 py-3">
           <Textarea
-            className="w-full text-foreground"
+            className="question-textarea w-full text-foreground"
             style={{
               padding: 0,
               border: 'none',
               background: 'transparent',
-              minHeight: '120px',
               color: 'hsl(var(--foreground))',
               fontSize: '16px',
               lineHeight: '1.6'
