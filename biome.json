@@ -10,6 +10,8 @@
       "src/**/*.scss",
       "src/**/*.json",
       "config/**/*.ts",
+      "server/**/*.mjs",
+      "server/**/*.json",
       "!src/client/supabase.ts"
     ]
   },

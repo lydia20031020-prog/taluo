@@ -59,23 +59,29 @@ pnpm run lint  # Lint source (Important: After modifying the code, please execut
 
 ## H5 网站发布
 
-当前第一阶段部署地址：`https://lydia20031020-prog.github.io/taluo/`。后续可将 `www.taluo.lydiaowo.com` 绑定到 GitHub Pages。H5 是静态文件，Supabase 负责牌库、占卜记录和 Edge Function AI 解读。
+当前前端地址：`https://lydia20031020-prog.github.io/taluo/`。H5 由 GitHub Pages 托管，AI 请求经
+`https://api.taluo.lydiaowo.com` 转发到 DeepSeek，API 密钥只保存在腾讯云服务器中。Supabase 尚未配置，
+当前牌库和牌阵使用本地离线数据。
 
 ### GitHub Pages 自动部署
 
 仓库已经包含 `.github/workflows/deploy-pages.yml`。将代码推送到 `main` 分支后，GitHub Actions 会自动构建并发布 H5。
 
 1. 在仓库 `Settings > Pages > Build and deployment` 中将 `Source` 设为 `GitHub Actions`。
-2. 在 `Settings > Secrets and variables > Actions > Variables` 添加 `TARO_APP_SUPABASE_URL` 和 `TARO_APP_SUPABASE_ANON_KEY`。当前没有 Supabase 时可以暂时不添加，页面仍可打开，但牌阵和牌库为空。
-3. 推送到 `main` 后，在 `Actions` 页面等待 `Build and deploy H5 to GitHub Pages` 完成。
+2. AI API 地址已经在工作流中配置为 `https://api.taluo.lydiaowo.com`。不要在 GitHub Secrets、Variables 或前端环境变量中添加 DeepSeek API Key。
+3. Supabase 尚未创建时无需添加相关变量，页面会使用本地塔罗数据。
+4. 推送到 `main` 后，在 `Actions` 页面等待 `Build and deploy H5 to GitHub Pages` 完成。
 
-### 1. 配置 Supabase
+### 1. DeepSeek AI 架构
 
-1. 在 Supabase 创建或选择一个项目。
-2. 在 SQL Editor 按顺序执行 `supabase/migrations/00001_create_tarot_tables.sql` 到 `00004_insert_minor_arcana_remaining.sql`。
-3. 在 Supabase 部署两个 Edge Functions：`tarot-interpretation` 和 `tarot-summary`。
-4. 在项目 Secrets 中设置 `DASHSCOPE_API_KEY`。该密钥只放在 Edge Function，不能写进 H5 环境变量或提交到 Git。
-5. 在 Project Settings > API 复制 Project URL 和 anon public key，填入本地 `.env.production`（可从 `.env.example` 复制）。anon key 可以用于浏览器，`service_role` key 不可以暴露。
+```text
+GitHub Pages H5
+    -> https://api.taluo.lydiaowo.com
+    -> Tencent Cloud 43.143.208.73 (Nginx + Node.js)
+    -> https://api.deepseek.com/chat/completions
+```
+
+服务器程序位于 `server/`，默认模型为 `deepseek-v4-flash`。浏览器不会收到 DeepSeek API Key。
 
 ### 2. 构建 H5
 
@@ -84,54 +90,85 @@ corepack pnpm install --frozen-lockfile
 corepack pnpm build:h5:production
 ```
 
-构建产物位于 `dist/`。每次更换 Supabase 地址或 anon key 后都需要重新构建。
+构建产物位于 `dist/`。每次更换公开的 AI API 地址、Supabase 地址或 anon key 后都需要重新构建。
 
-### 3. 部署到服务器
+### 3. 配置 DNS
 
-以下示例适用于后续改为自有服务器部署。请将 `dist/` 的内容上传到该目录，不要上传 `.env.production`、Supabase service role key 或任何 AI 服务 key。
+域名当前使用 DNSPod。添加一条记录：
 
-```bash
-sudo mkdir -p /var/www/taluo
-sudo chown -R "$USER":"$USER" /var/www/taluo
-rsync -avz --delete dist/ <SSH_USER>@43.143.208.73:/var/www/taluo/
-```
+| 配置项 | 值 |
+| --- | --- |
+| 记录类型 | `A` |
+| 主机记录 | `api.taluo` |
+| 记录值 | `43.143.208.73` |
+| TTL | 默认 |
 
-Nginx 站点配置（`/etc/nginx/sites-available/taluo`）应包含：
+### 4. 部署 AI 服务
 
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name www.taluo.lydiaowo.com;
-    root /var/www/taluo;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
-
-启用配置并检查：
+服务器要求 Ubuntu/Debian、Node.js 20 或更高版本、Nginx。不要把 API Key 写入仓库或命令历史。
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/taluo /etc/nginx/sites-enabled/taluo
+sudo useradd --system --home /opt/taluo-ai --shell /usr/sbin/nologin taluo
+sudo mkdir -p /opt/taluo-ai
+sudo cp server/index.mjs server/package.json /opt/taluo-ai/
+sudo chown -R taluo:taluo /opt/taluo-ai
+sudo cp server/taluo-ai.service /etc/systemd/system/
+sudo cp server/nginx-api.conf /etc/nginx/sites-available/taluo-api
+sudo ln -s /etc/nginx/sites-available/taluo-api /etc/nginx/sites-enabled/taluo-api
+```
+
+在服务器交互式创建密钥文件，避免密钥进入 shell 历史：
+
+```bash
+sudo install -m 600 -o root -g root /dev/null /etc/taluo-ai.env
+sudo nano /etc/taluo-ai.env
+```
+
+文件内容：
+
+```ini
+PORT=8787
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_API_KEY=在这里填写新密钥
+FRONTEND_ORIGINS=https://lydia20031020-prog.github.io,https://www.taluo.lydiaowo.com
+DAILY_REQUEST_LIMIT=200
+DAILY_IP_LIMIT=20
+```
+
+启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now taluo-ai
+sudo systemctl status taluo-ai --no-pager
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 4. DNS 和 HTTPS
+### 5. 配置 HTTPS
 
-在域名 DNS 控制台添加 `A` 记录：主机记录 `www.taluo`，记录值 `43.143.208.73`。解析生效后，在服务器执行：
+确认 `api.taluo.lydiaowo.com` 已解析到服务器后执行：
 
 ```bash
 sudo apt update
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d www.taluo.lydiaowo.com
+sudo certbot --nginx -d api.taluo.lydiaowo.com
 ```
 
-Certbot 会配置 HTTPS 和自动续期。上线验收至少要测试首页、单张牌、三张牌、牌库、历史记录、AI 解读，以及直接刷新页面和手机访问。
+验收：
 
-### 5. 备案信息
+```bash
+curl -i https://api.taluo.lydiaowo.com/api/tarot/summary
+journalctl -u taluo-ai -n 50 --no-pager
+```
+
+第一个命令用 GET 请求会返回 `404`，这表示 HTTPS 和反向代理已连通。之后在 H5 中进行一次单张牌占卜，分别测试 AI 深度解读和 AI 总结。
+
+### 6. 后续配置 Supabase
+
+需要云端保存历史记录时，再创建 Supabase 项目并执行 `supabase/migrations/` 下的迁移。Supabase anon key 可以用于浏览器，`service_role` key 不能暴露。
+
+### 7. 备案信息
 
 首页已展示备案号：`京ICP备2026004406号-2`。备案主体、网站名称和服务器接入信息仍以工信部/云服务商备案后台登记为准。

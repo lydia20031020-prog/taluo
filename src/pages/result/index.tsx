@@ -2,7 +2,12 @@ import {Button, Image, ScrollView, Text, View} from '@tarojs/components'
 import Taro, {getEnv, useShareAppMessage, useShareTimeline} from '@tarojs/taro'
 import {useCallback, useEffect, useState} from 'react'
 import {createDivinationRecord} from '@/db/api'
-import {getTarotInterpretation, getTarotSummary, type TarotInterpretationResult} from '@/db/interpretation'
+import {
+  getTarotInterpretation,
+  getTarotSummary,
+  TarotAIError,
+  type TarotInterpretationResult
+} from '@/db/interpretation'
 import {useDivinationStore} from '@/store/divination'
 import {useUserStore} from '@/store/user'
 
@@ -93,27 +98,19 @@ export default function Result() {
     setLoadingAI(true)
     try {
       const result = await getTarotInterpretation(question, selectedSpread, drawnCards)
-      if (result) {
-        setAiInterpretation(result)
-        setShowAIInterpretation(true)
-        Taro.showToast({
-          title: 'AI解读生成成功',
-          icon: 'success',
-          duration: 2000
-        })
-      } else {
-        Taro.showToast({
-          title: 'AI解读生成失败',
-          icon: 'none',
-          duration: 2000
-        })
-      }
+      setAiInterpretation(result)
+      setShowAIInterpretation(true)
+      Taro.showToast({
+        title: 'AI解读生成成功',
+        icon: 'success',
+        duration: 2000
+      })
     } catch (error) {
       console.error('获取AI解读失败:', error)
       Taro.showToast({
-        title: 'AI解读生成失败',
+        title: error instanceof TarotAIError ? error.message : 'AI解读生成失败',
         icon: 'none',
-        duration: 2000
+        duration: 3500
       })
     } finally {
       setLoadingAI(false)
@@ -127,26 +124,18 @@ export default function Result() {
     setLoadingSummary(true)
     try {
       const summary = await getTarotSummary(question, selectedSpread, drawnCards)
-      if (summary) {
-        setAiSummary(summary)
-        Taro.showToast({
-          title: 'AI总结生成成功',
-          icon: 'success',
-          duration: 2000
-        })
-      } else {
-        Taro.showToast({
-          title: 'AI总结生成失败',
-          icon: 'none',
-          duration: 2000
-        })
-      }
+      setAiSummary(summary)
+      Taro.showToast({
+        title: 'AI总结生成成功',
+        icon: 'success',
+        duration: 2000
+      })
     } catch (error) {
       console.error('获取AI总结失败:', error)
       Taro.showToast({
-        title: 'AI总结生成失败',
+        title: error instanceof TarotAIError ? error.message : 'AI总结生成失败',
         icon: 'none',
-        duration: 2000
+        duration: 3500
       })
     } finally {
       setLoadingSummary(false)

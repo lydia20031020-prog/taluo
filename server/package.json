@@ -1,0 +1,11 @@
+{
+  "name": "taluo-ai-api",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.mjs"
+  }
+}

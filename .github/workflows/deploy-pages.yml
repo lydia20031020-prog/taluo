@@ -20,6 +20,7 @@ jobs:
     env:
       TARO_APP_APP_ID: taluo-h5
       TARO_APP_PUBLIC_PATH: /taluo/
+      TARO_APP_AI_API_URL: https://api.taluo.lydiaowo.com
       TARO_APP_SUPABASE_URL: ${{ vars.TARO_APP_SUPABASE_URL }}
       TARO_APP_SUPABASE_ANON_KEY: ${{ vars.TARO_APP_SUPABASE_ANON_KEY }}
     steps:

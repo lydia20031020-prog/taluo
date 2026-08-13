@@ -1,0 +1,23 @@
+[Unit]
+Description=Taluo DeepSeek AI API
+After=network.target
+
+[Service]
+Type=simple
+User=taluo
+Group=taluo
+WorkingDirectory=/opt/taluo-ai
+EnvironmentFile=/etc/taluo-ai.env
+Environment=USAGE_STATE_FILE=/var/lib/taluo-ai/usage.json
+ExecStart=/usr/bin/node /opt/taluo-ai/index.mjs
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+StateDirectory=taluo-ai
+StateDirectoryMode=0700
+
+[Install]
+WantedBy=multi-user.target

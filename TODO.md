@@ -36,17 +36,17 @@
   - [x] 添加可展开的总结面板
   - [x] 添加互动提示和引导
 - [x] 步骤7: AI深度解读功能
-  - [x] 创建Supabase Edge Function处理AI解读
+  - [x] 创建独立服务端代理处理AI解读
   - [x] 实现前端调用AI解读API
   - [x] 结合用户问题、牌面信息和牌阵位置生成个性化解读
   - [x] 为每张牌生成详细的AI解读
   - [x] 生成整体牌阵AI总述
   - [x] 添加AI解读UI界面(可展开面板)
-- [x] 步骤8: 集成通义千问AI
-  - [x] 配置阿里云通义千问API密钥
-  - [x] 修改Edge Function使用通义千问API
-  - [x] 创建tarot-interpretation函数(深度解读)
-  - [x] 创建tarot-summary函数(整体总结)
+- [x] 步骤8: 集成DeepSeek AI
+  - [x] 配置服务器端DeepSeek环境变量
+  - [x] 创建DeepSeek OpenAI兼容API代理
+  - [x] 创建深度解读接口
+  - [x] 创建整体总结接口
   - [x] 实现AI生成每张牌的个性化解读
   - [x] 实现AI生成整体牌阵总结
   - [x] 优化prompt提示词,确保解读质量
@@ -100,7 +100,7 @@
 - 支持点击展开/收起,提升用户体验
 
 ### 3. AI深度解读功能(新增)
-- **Edge Function**: 创建`tarot-interpretation` Edge Function处理AI解读逻辑
+- **服务端代理**: 在腾讯云服务器通过独立Node.js服务处理AI解读逻辑
 - **个性化解读**: 结合用户问题、牌面信息(牌名、正逆位、关键词、牌义)和牌阵位置含义
 - **每张牌解读**: 为每张牌生成详细的个性化解读,包含位置含义、牌面分析和建议
 - **整体总述**: 分析牌面能量(正位/逆位比例),生成综合性的总结和建议
@@ -115,14 +115,14 @@
 
 ## AI解读功能说明
 
-AI深度解读功能通过Supabase Edge Function和阿里云通义千问API实现,主要特点:
+AI深度解读功能通过腾讯云服务器代理和DeepSeek API实现,主要特点:
 
 ### 1. 技术架构
-- **AI模型**: 阿里云通义千问(qwen-plus)
+- **AI模型**: DeepSeek `deepseek-v4-flash`
 - **API集成**: 使用OpenAI兼容接口格式
-- **Edge Functions**: 
-  - `tarot-interpretation`: 生成每张牌的详细解读和整体总述
-  - `tarot-summary`: 生成整体牌阵解读总结
+- **服务端接口**:
+  - `/api/tarot/interpretation`: 生成每张牌的详细解读和整体总述
+  - `/api/tarot/summary`: 生成整体牌阵解读总结
 
 ### 2. 输入信息
 - 用户问题
