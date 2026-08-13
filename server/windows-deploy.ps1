@@ -32,13 +32,13 @@ if (-not (Test-Path $NodeExe)) {
   Start-Process msiexec.exe -ArgumentList "/i `"$NodeMsi`" /qn /norestart" -Wait
 }
 if (-not (Test-Path $NodeExe)) {
-  throw "Node.js 安装失败：找不到 $NodeExe"
+  throw "Node.js installation failed: $NodeExe was not found."
 }
 
 if (-not (Test-Path $PnpmExe)) {
   & $NpmExe install --global pnpm@10.27.0 --prefix $PnpmRoot
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PnpmExe)) {
-    throw "pnpm 安装失败：找不到 $PnpmExe"
+    throw "pnpm installation failed: $PnpmExe was not found."
   }
 }
 
@@ -49,12 +49,12 @@ $SourceUrl = "https://github.com/lydia20031020-prog/taluo/archive/refs/heads/$So
 Download-File $SourceUrl $SourceZip
 Expand-Archive -Path $SourceZip -DestinationPath $BuildRoot -Force
 $SourceDir = Get-ChildItem -Path $BuildRoot -Directory | Select-Object -First 1
-if (-not $SourceDir) { throw '无法找到塔罗项目源代码目录。' }
+if (-not $SourceDir) { throw 'Tarot source directory was not found.' }
 
 Push-Location $SourceDir.FullName
 try {
   & $PnpmExe install --no-frozen-lockfile
-  if ($LASTEXITCODE -ne 0) { throw '前端依赖安装失败。' }
+  if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
   $env:TARO_APP_PUBLIC_PATH = '/'
   $env:TARO_APP_CUSTOM_DOMAIN = 'www.taluo.lydiaowo.com'
   $env:TARO_APP_AI_API_URL = 'https://api.taluo.lydiaowo.com'
@@ -62,11 +62,11 @@ try {
   $env:TARO_APP_SUPABASE_ANON_KEY = ''
   $env:TARO_APP_APP_ID = 'taluo-h5'
   & $PnpmExe build:h5:production
-  if ($LASTEXITCODE -ne 0) { throw 'H5 生产构建失败。' }
+  if ($LASTEXITCODE -ne 0) { throw 'H5 production build failed.' }
   & $NodeExe scripts/preparePages.mjs
-  if ($LASTEXITCODE -ne 0) { throw 'GitHub Pages 文件准备失败。' }
+  if ($LASTEXITCODE -ne 0) { throw 'GitHub Pages file preparation failed.' }
   if (-not (Test-Path (Join-Path $SourceDir.FullName 'dist\index.html'))) {
-    throw '构建完成但找不到 dist\index.html。'
+    throw 'The build completed but dist\index.html was not found.'
   }
   $DistDir = Join-Path $SourceDir.FullName 'dist'
 }
@@ -75,7 +75,7 @@ finally {
 }
 
 & robocopy $DistDir $SiteDir /MIR /R:2 /W:2 /NFL /NDL /NJH /NJS
-if ($LASTEXITCODE -gt 7) { throw "网站文件复制失败，robocopy exit code=$LASTEXITCODE。" }
+if ($LASTEXITCODE -gt 7) { throw "Website file copy failed: robocopy exit code=$LASTEXITCODE." }
 Copy-Item (Join-Path $SourceDir.FullName 'server\index.mjs') $Entry -Force
 Copy-Item (Join-Path $SourceDir.FullName 'server\package.json') (Join-Path $InstallDir 'package.json') -Force
 
@@ -116,7 +116,7 @@ if ($existingTask) {
   Start-Sleep -Seconds 2
 }
 if (Get-NetTCPConnection -State Listen -LocalPort 8790 -ErrorAction SilentlyContinue) {
-  throw '端口 8790 已被其他程序占用，已停止部署且未修改 Caddy。'
+  throw 'Port 8790 is already in use. Deployment stopped before modifying Caddy.'
 }
 
 @"
@@ -146,8 +146,8 @@ Register-ScheduledTask `
 Start-ScheduledTask -TaskName $TaskName
 Start-Sleep -Seconds 3
 
-if (-not (Test-Path $CaddyFile)) { throw "找不到现有 Caddy 配置：$CaddyFile" }
-if (-not (Test-Path $CaddyExe)) { throw "找不到 Caddy：$CaddyExe" }
+if (-not (Test-Path $CaddyFile)) { throw "Existing Caddy config was not found: $CaddyFile" }
+if (-not (Test-Path $CaddyExe)) { throw "Caddy executable was not found: $CaddyExe" }
 
 $caddyText = Get-Content -Path $CaddyFile -Raw
 if ($caddyText -notmatch '(?m)^www\.taluo\.lydiaowo\.com\s*\{') {
@@ -192,16 +192,16 @@ api.taluo.lydiaowo.com {
   & $CaddyExe validate --config $CaddyFile --adapter caddyfile
   if ($LASTEXITCODE -ne 0) {
     Copy-Item $backup $CaddyFile -Force
-    throw "Caddy 配置校验失败，已恢复备份：$backup"
+    throw "Caddy config validation failed. The backup was restored: $backup"
   }
   & $CaddyExe reload --config $CaddyFile --adapter caddyfile
   if ($LASTEXITCODE -ne 0) {
     Copy-Item $backup $CaddyFile -Force
     & $CaddyExe reload --config $CaddyFile --adapter caddyfile
-    throw "Caddy 重新加载失败，已恢复备份：$backup"
+    throw "Caddy reload failed. The backup was restored: $backup"
   }
 }
 
-Write-Host "完成：www.taluo.lydiaowo.com 网站文件已部署到 $SiteDir。"
-Write-Host "完成：TaluoAI 使用 127.0.0.1:8790；现有 wbti 配置未被替换。"
-Write-Host "下一步：在 C:\taluo-ai\.env 填入新的 DeepSeek API Key，然后重新运行 TaluoAI 计划任务。"
+Write-Host "Done: www.taluo.lydiaowo.com was deployed to $SiteDir."
+Write-Host "Done: TaluoAI uses 127.0.0.1:8790; the existing wbti config was preserved."
+Write-Host "Next: add a new DeepSeek API key to C:\taluo-ai\.env, then restart the TaluoAI scheduled task."
