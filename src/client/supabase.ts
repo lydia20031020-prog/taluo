@@ -8,6 +8,7 @@ import Taro, {showToast} from '@tarojs/taro'
 const supabaseUrl: string = process.env.TARO_APP_SUPABASE_URL || 'https://placeholder.invalid'
 const supabaseAnonKey: string = process.env.TARO_APP_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 const appId: string = process.env.TARO_APP_APP_ID || 'taluo-h5'
+export const hasSupabaseConfig = Boolean(process.env.TARO_APP_SUPABASE_URL && process.env.TARO_APP_SUPABASE_ANON_KEY)
 
 let noticed = false
 export const customFetch: typeof fetch = async (url: string, options: RequestInit) => {

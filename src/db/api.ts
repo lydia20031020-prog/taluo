@@ -1,17 +1,19 @@
 // 塔罗牌数据库API
 
-import {supabase} from '@/client/supabase'
+import {hasSupabaseConfig, supabase} from '@/client/supabase'
+import {localSpreadTypes, localTarotCards} from './localData'
 import type {DivinationRecord, DrawnCard, SpreadType, TarotCard} from './types'
 
 /**
  * 获取所有塔罗牌
  */
 export async function getAllTarotCards(): Promise<TarotCard[]> {
+  if (!hasSupabaseConfig) return localTarotCards
   const {data, error} = await supabase.from('tarot_cards').select('*').order('id', {ascending: true})
 
   if (error) {
     console.error('获取塔罗牌数据失败:', error)
-    return []
+    return localTarotCards
   }
 
   return data || []
@@ -21,11 +23,12 @@ export async function getAllTarotCards(): Promise<TarotCard[]> {
  * 根据ID获取塔罗牌
  */
 export async function getTarotCardById(id: number): Promise<TarotCard | null> {
+  if (!hasSupabaseConfig) return localTarotCards.find((card) => card.id === id) || null
   const {data, error} = await supabase.from('tarot_cards').select('*').eq('id', id)
 
   if (error) {
     console.error('获取塔罗牌失败:', error)
-    return null
+    return localTarotCards.find((card) => card.id === id) || null
   }
 
   return data && data.length > 0 ? data[0] : null
@@ -35,6 +38,7 @@ export async function getTarotCardById(id: number): Promise<TarotCard | null> {
  * 根据类型获取塔罗牌
  */
 export async function getTarotCardsByType(type: 'major' | 'minor'): Promise<TarotCard[]> {
+  if (!hasSupabaseConfig) return localTarotCards.filter((card) => card.card_type === type)
   const {data, error} = await supabase
     .from('tarot_cards')
     .select('*')
@@ -43,16 +47,17 @@ export async function getTarotCardsByType(type: 'major' | 'minor'): Promise<Taro
 
   if (error) {
     console.error('获取塔罗牌失败:', error)
-    return []
+    return localTarotCards.filter((card) => card.card_type === type)
   }
 
-  return data || []
+  return data && data.length > 0 ? data : localTarotCards.filter((card) => card.card_type === type)
 }
 
 /**
  * 根据牌组获取塔罗牌
  */
 export async function getTarotCardsBySuit(suit: 'wands' | 'cups' | 'swords' | 'pentacles'): Promise<TarotCard[]> {
+  if (!hasSupabaseConfig) return localTarotCards.filter((card) => card.suit === suit)
   const {data, error} = await supabase
     .from('tarot_cards')
     .select('*')
@@ -61,24 +66,25 @@ export async function getTarotCardsBySuit(suit: 'wands' | 'cups' | 'swords' | 'p
 
   if (error) {
     console.error('获取塔罗牌失败:', error)
-    return []
+    return localTarotCards.filter((card) => card.suit === suit)
   }
 
-  return data || []
+  return data && data.length > 0 ? data : localTarotCards.filter((card) => card.suit === suit)
 }
 
 /**
  * 获取所有牌阵类型
  */
 export async function getAllSpreadTypes(): Promise<SpreadType[]> {
+  if (!hasSupabaseConfig) return localSpreadTypes
   const {data, error} = await supabase.from('spread_types').select('*').order('sort_order', {ascending: true})
 
   if (error) {
     console.error('获取牌阵类型失败:', error)
-    return []
+    return localSpreadTypes
   }
 
-  return data || []
+  return data && data.length > 0 ? data : localSpreadTypes
 }
 
 /**
@@ -103,11 +109,12 @@ export async function getSpreadTypesByCategory(category: 'basic' | 'classic' | '
  * 根据ID获取牌阵类型
  */
 export async function getSpreadTypeById(id: number): Promise<SpreadType | null> {
+  if (!hasSupabaseConfig) return localSpreadTypes.find((spread) => spread.id === id) || null
   const {data, error} = await supabase.from('spread_types').select('*').eq('id', id)
 
   if (error) {
     console.error('获取牌阵类型失败:', error)
-    return null
+    return localSpreadTypes.find((spread) => spread.id === id) || null
   }
 
   return data && data.length > 0 ? data[0] : null
@@ -122,6 +129,7 @@ export async function createDivinationRecord(
   cardsDrawn: DrawnCard[],
   question?: string
 ): Promise<DivinationRecord | null> {
+  if (!hasSupabaseConfig) return null
   const {data, error} = await supabase
     .from('divination_records')
     .insert({
@@ -145,6 +153,7 @@ export async function createDivinationRecord(
  * 获取用户的占卜记录
  */
 export async function getUserDivinationRecords(userId: string, limit = 50): Promise<DivinationRecord[]> {
+  if (!hasSupabaseConfig) return []
   const {data, error} = await supabase
     .from('divination_records')
     .select('*')
@@ -164,6 +173,7 @@ export async function getUserDivinationRecords(userId: string, limit = 50): Prom
  * 根据ID获取占卜记录
  */
 export async function getDivinationRecordById(id: string): Promise<DivinationRecord | null> {
+  if (!hasSupabaseConfig) return null
   const {data, error} = await supabase.from('divination_records').select('*').eq('id', id)
 
   if (error) {

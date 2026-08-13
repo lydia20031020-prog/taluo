@@ -15,7 +15,7 @@ export default function Shuffle() {
     const cards = await getAllTarotCards()
     setAllCards(cards)
     if (cards.length === 0) {
-      Taro.showToast({title: '塔罗牌数据加载中,请稍后', icon: 'none', duration: 2000})
+      Taro.showToast({title: '塔罗牌数据暂不可用,请刷新页面', icon: 'none', duration: 2000})
     }
   }, [])
 
@@ -26,7 +26,7 @@ export default function Shuffle() {
   // 开始洗牌
   const handleShuffle = async () => {
     if (allCards.length === 0) {
-      Taro.showToast({title: '塔罗牌数据未加载完成', icon: 'none'})
+      Taro.showToast({title: '塔罗牌数据暂不可用,请刷新页面', icon: 'none'})
       return
     }
 

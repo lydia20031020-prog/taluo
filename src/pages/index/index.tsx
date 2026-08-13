@@ -224,10 +224,10 @@ export default function Index() {
         {/* 免责声明 */}
         <View className="px-6 pb-8">
           <View className="bg-muted/30 rounded-xl p-4 border border-border/50">
-            <Text className="text-xs text-muted-foreground text-center break-keep">
+            <Text className="block text-xs text-muted-foreground text-center break-keep">
               本程序仅供娱乐与自我探索,不替代专业建议
             </Text>
-            <Text className="text-xs text-muted-foreground text-center break-keep mt-2">
+            <Text className="block text-xs text-muted-foreground text-center break-keep mt-2">
               备案号：京ICP备2026004406号-2
             </Text>
           </View>
