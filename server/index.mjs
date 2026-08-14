@@ -21,9 +21,7 @@ const usageStateFile = process.env.USAGE_STATE_FILE || ''
 const rateBuckets = new Map()
 let dailyUsage = loadDailyUsage()
 
-const tarotSystemPrompt = `你是一位专业、温和、负责任的中文塔罗牌解读师。
-塔罗牌只能用于自我反思和娱乐，不做确定性预测，不替用户做医疗、法律、投资或其他高风险决定。
-请尊重用户隐私，避免制造恐慌、依赖或绝对化结论。`
+const tarotSystemPrompt = `你是一位有经验、真诚、克制的中文塔罗解读者。请先回应用户真正关心的问题，再结合牌位、正逆位和牌面关系进行分析。区分牌面倾向、可能解释和行动建议，不把推测说成事实。表达自然具体，避免神秘套话、绝对化预测、重复牌义和空泛建议。遇到矛盾牌面时，请说明其中的拉扯或现实条件。塔罗用于自我反思和娱乐，不制造恐惧或依赖。`
 
 function sendJson(response, statusCode, payload, origin) {
   const headers = {
@@ -211,26 +209,41 @@ async function callDeepSeek(messages, maxTokens) {
 }
 
 function interpretationPrompt(question, spreadName, cards) {
-  return `请解读用户的塔罗牌牌阵，并严格只返回 JSON，不要 Markdown 或额外文字。JSON 结构必须是：
-{"cardInterpretations":[{"cardIndex":0,"cardName":"牌名","orientation":"正位或逆位","position":"牌位","interpretation":"约200-300字解读"}],"summary":"约300-400字整体总述"}
+  return `请根据用户问题和牌面资料进行自然、有逻辑的解读。
+
+只返回有效 JSON：
+{"cardInterpretations":[{"cardIndex":0,"cardName":"牌名","orientation":"正位或逆位","position":"牌位","interpretation":"解读"}],"summary":"整体解读"}
 
 用户问题：${question}
 牌阵：${spreadName}
 牌面资料：
-${cards.map((item, index) => `${index}. 牌位=${item.position}；${item.card.name_cn}(${item.card.name_en})；${item.card.is_reversed ? '逆位' : '正位'}；关键词=${item.card.keywords.join('、')}；基础牌义=${item.card.meaning}；行动建议=${item.card.advice}`).join('\n')}
+${cards.map((item, index) => `${index}. ${item.position}；${item.card.name_cn}；${item.card.is_reversed ? '逆位' : '正位'}；关键词=${item.card.keywords.join('、')}；牌义=${item.card.meaning}；建议=${item.card.advice}`).join('\n')}
 
-逐张解读要结合问题、牌位、正逆位和基础牌义，给出可执行且温和的建议。整体总述请说明牌面之间的联系、趋势和用户可以把握的行动。不要声称结果必然发生，不要提供医疗、法律或投资结论。`
+要求：
+- 牌面数量、顺序和字段必须对应输入。
+- 每张牌用 100-160 字，结合用户问题、牌位和正逆位，说明它的具体影响和一个相关建议。
+- 不要逐张重复基础牌义，也不要使用相同句式开头。
+- summary 用 220-320 字：先回应问题，再说明牌面主线、关键关系和现实中的下一步。
+- 不要 Markdown、绝对化预测或泛泛的“保持积极”等套话。`
 }
 
 function summaryPrompt(question, spreadName, cards) {
-  return `请为用户的塔罗牌阵生成整体解读，并严格只返回 JSON，不要 Markdown 或额外文字。JSON 结构必须是：{"summary":"约250-350字的中文整体解读"}
+  return `请根据用户问题和牌阵生成整体解读。
+
+只返回有效 JSON：
+{"summary":"整体解读"}
 
 用户问题：${question}
 牌阵：${spreadName}
 抽牌：
 ${cards.map((item, index) => `${index + 1}. ${item.position}：${item.card.name_cn}（${item.card.is_reversed ? '逆位' : '正位'}），关键词：${item.card.keywords.join('、')}`).join('\n')}
 
-请说明整体能量、正逆位比例、牌面关联、对问题的启发和实际建议。语气温和专业，避免绝对化预测，并提醒塔罗是自我反思工具。`
+请用 220-320 字完成：
+1. 开头直接回应用户的问题；
+2. 说明最重要的牌面关系、主线或矛盾；
+3. 给出两到三个具体、现实的建议。
+
+不要逐张复述牌义，不要统计无关的正逆位比例，不要使用神秘套话或绝对化结论。只返回 JSON，不要 Markdown。`
 }
 
 async function handle(request, response, origin, pathname) {
